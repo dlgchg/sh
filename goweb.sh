@@ -1,7 +1,7 @@
 #!/bin/sh
 
 read -p "Enter Golang Project Name:" projectName
-# read -p "Enter $projectName WorkPath:" projectPath
+read -p "Select VSCode(code) or GoLand(goland) open $projectName:" ide
 echo $GOPATH/src
 echo "create project ..."
 
@@ -23,6 +23,28 @@ mkdir "service"
 mkdir "api"
 # jwt
 mkdir "middleware"
+
+# 数据库初始化
+touch "$GOPATH/src/$projectName/model/init.go"
+cat>"$GOPATH/src/$projectName/model/init.go"<<EOF
+package model
+
+import (
+    _ "github.com/go-sql-driver/mysql"
+    "github.com/jinzhu/gorm"
+    "os"
+)  
+
+var DB *gorm.DB 
+
+func InitDatabase() {
+    db, err := gorm.Open("mysql", os.Getenv("MYSQL_DSN"))
+    if err != nil {
+        panic(err)
+    }
+    DB = db
+}
+EOF
 
 # 写入index路由
 touch "$GOPATH/src/$projectName/api/api.go"
@@ -57,6 +79,7 @@ package conf
 import (
 	"github.com/joho/godotenv"
 	"log"
+	"$projectName/model"
 )
 
 func Init() {
@@ -64,6 +87,8 @@ func Init() {
 	if err != nil {
 		log.Panicln(err)
 	}
+
+	model.InitDatabase()
 }
 
 EOF
@@ -89,7 +114,7 @@ func Logger() gin.HandlerFunc {
 
 EOF
 
-# 写出初始化路由组
+# 初始化路由组
 touch "$GOPATH/src/$projectName/server/router.go"
 cat>"$GOPATH/src/$projectName/server/router.go"<<EOF
 package server
@@ -148,4 +173,4 @@ EOF
 cd "$GOPATH/src/$projectName"
 dep init
 dep ensure
-goland .
+$ide .
